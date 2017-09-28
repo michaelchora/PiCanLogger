@@ -21,65 +21,73 @@ import os
 import queue
 from threading import Thread
 
+
 led = 22
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.setup(led, GPIO.OUT)
-GPIO.output(led, True)
+GPIO.setup(led,GPIO.OUT)
+GPIO.output(led,True)
 
-outfile = open('log.txt', 'w')
+
+timestr = '/var/www/html/' + time.strftime("%Y%m%d-%H%M%S") + '.log'
+
+outfile = open(timestr,'w')
 count = 0
 
 print('\n\rCAN Rx test')
 print('Bring up CAN0....')
 
-# Bring up can0 interface at 1mbps for haltech canbus
+# Bring up can0 interface at 1mbps
 os.system("sudo /sbin/ip link set can0 up type can bitrate 1000000")
-time.sleep(0.1)
-print('Press CTL-C to exit')
+time.sleep(0.1)	
+print('CAN0 up')
+print('Press CTL-C to exit and save logfile')
 
 try:
-    bus = can.interface.Bus(channel='can0', bustype='socketcan_native')
+	bus = can.interface.Bus(channel='can0', bustype='socketcan_native')
 except OSError:
-    print('Cannot find PiCAN board.')
-    GPIO.output(led, False)
-    exit()
-
+	print('Cannot find PiCAN board.')
+	GPIO.output(led,False)
+	exit()
 
 # CAN receive thread
 def can_rx_task():
-    while True:
-        message = bus.recv()
-        q.put(message)  # Put message into queue
-
+	while True:
+		message = bus.recv()
+		q.put(message)			# Put message into queue
 
 q = queue.Queue()
-t = Thread(target=can_rx_task)  # Start receive thread
+t = Thread(target = can_rx_task)	# Start receive thread
 t.start()
 
 # Main loop
 try:
-    while True:
-        if q.empty() != True:  # Check if there is a message in queue
-            message = q.get()
-            c = '{0:f} {1:d} {2:x} {3:x} '.format(message.timestamp, count, message.arbitration_id, message.dlc)
-            s = ''
-            for i in range(message.dlc):
-                s += '{0:x} '.format(message.data[i])
+	while True:
+		if q.empty() != True:	# Check if there is a message in queue
+			message = q.get()
+			c = '{0:f} {1:d} {2:x} {3:x} '.format(message.timestamp,count, message.arbitration_id, message.dlc)
+			s=''
+			for i in range(message.dlc ):
+				s +=  '{0:x} '.format(message.data[i])
 
-            outstr = c + s
+            # check if s is empty 0 0 0 0 0 0 0 then dont insert line in file.
 
-            print('\r {} qsize:{}       '.format(outstr, q.qsize()), end='')  # Print data and queue size on screen
+                
+			outstr = c+s
 
-            count += 1
+			print('\r {} qsize:{}       '.format(outstr,q.qsize()),end ='') # Print data and queue size on screen
+			
+			count += 1
+			
+			print(outstr,file = outfile) # Save data to file
+		 
 
-            print(outstr, file=outfile)  # Save data to file
-
-
-
+	
 except KeyboardInterrupt:
-    # Catch keyboard interrupt
-    GPIO.output(led, False)
-    outfile.close()
-    os.system("sudo /sbin/ip link set can0 down")
-    print('\n\rKeyboard interrtupt')
+	#Catch keyboard interrupt
+	GPIO.output(led,False)
+	outfile.close()
+	os.system("sudo /sbin/ip link set can0 down")
+	chowncommand = 'sudo chown michael:michael ' + timestr
+	os.system(chowncommand)
+	print('\n\rKeyboard interrtupt')	
