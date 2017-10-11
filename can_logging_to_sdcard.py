@@ -9,7 +9,7 @@
 # Make sure Python-CAN is installed first http://skpang.co.uk/blog/archives/1220
 #
 # 01-02-16 SK Pang
-#
+# 28-09-17 M Chora
 #
 #
 # TODO check for queue full
@@ -71,8 +71,9 @@ try:
 				s +=  '{0:x} '.format(message.data[i])
 
             # check if s is empty 0 0 0 0 0 0 0 then dont insert line in file.
-
-                
+            
+            s2 = "".join(s.split())
+            
 			outstr = c+s
 
 			print('\r {} qsize:{}       '.format(outstr,q.qsize()),end ='') # Print data and queue size on screen
